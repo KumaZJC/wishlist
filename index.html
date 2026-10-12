@@ -1,0 +1,1381 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>SmartBuy · 理性慢买与场景比价备忘录</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f6f7f9',
+              100: '#edeef2',
+              200: '#d7dae2',
+              500: '#475569',
+              800: '#1e293b',
+              900: '#0f172a',
+              gold: '#c29d59',
+              goldLight: '#fbf7ee'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    /* 隐藏滚动条但保留平滑滚动 */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    
+    /* 玻璃拟态阴影 */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(12px);
+    }
+    
+    /* 移动端点击高亮清除 */
+    * {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* 徽章微动效 */
+    .pulse-glow {
+      box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); }
+      70% { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+    }
+  </style>
+</head>
+<body class="bg-[#f8f9fa] text-slate-800 font-sans min-h-screen pb-24 antialiased selection:bg-amber-100 selection:text-amber-900">
+
+  <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 transition-all">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-slate-900 text-amber-300 flex items-center justify-center font-bold shadow-sm">
+          <i data-lucide="scale" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-lg text-slate-900 tracking-tight leading-none flex items-center gap-1.5">
+            SmartBuy <span class="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 font-medium border border-amber-200/60">理性慢买</span>
+          </h1>
+          <p class="text-xs text-slate-500 mt-1 hidden sm:block">不冲动·等底价·免税店奥莱精准决策</p>
+        </div>
+      </div>
+
+      <!-- 快速操作区 -->
+      <div class="flex items-center gap-2">
+        <button id="btn-export-import" onclick="openDataModal()" class="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition" title="数据备份与导入">
+          <i data-lucide="database" class="w-5 h-5"></i>
+        </button>
+        <button onclick="openNewItemModal()" class="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 active:scale-95 text-white px-3.5 py-2 rounded-xl text-sm font-medium transition shadow-sm shadow-slate-900/10">
+          <i data-lucide="plus" class="w-4 h-4 text-amber-400"></i>
+          <span>记录好物</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 pt-5">
+    
+    <!-- 顶部状态统计看板 -->
+    <div class="grid grid-cols-3 gap-2.5 sm:gap-4 mb-4">
+      <div class="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+        <div>
+          <span class="text-xs text-slate-400 block font-medium">心愿待观望</span>
+          <span id="stat-watching" class="text-lg sm:text-xl font-bold text-slate-800">0</span>
+        </div>
+        <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+          <i data-lucide="binoculars" class="w-4 h-4"></i>
+        </div>
+      </div>
+      <div class="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+        <div>
+          <span class="text-xs text-slate-400 block font-medium">总底价预算</span>
+          <span id="stat-total-budget" class="text-lg sm:text-xl font-bold text-amber-600">¥0</span>
+        </div>
+        <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+          <i data-lucide="piggy-bank" class="w-4 h-4"></i>
+        </div>
+      </div>
+      <div class="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+        <div>
+          <span class="text-xs text-slate-400 block font-medium">已好价入手</span>
+          <span id="stat-purchased" class="text-lg sm:text-xl font-bold text-emerald-600">0</span>
+        </div>
+        <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+          <i data-lucide="badge-check" class="w-4 h-4"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- 搜索与多维度筛选器 -->
+    <div class="bg-white rounded-2xl p-3.5 border border-slate-200/80 shadow-xs space-y-3 mb-5">
+      <!-- 搜索输入框 -->
+      <div class="relative">
+        <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+        <input 
+          id="search-input" 
+          type="text" 
+          placeholder="搜索物品名、品牌、款式规格或场景关键词..." 
+          class="w-full pl-10 pr-10 py-2.5 text-sm bg-slate-50 hover:bg-slate-100/80 focus:bg-white rounded-xl border border-transparent focus:border-slate-300 focus:outline-none transition"
+          oninput="renderCards()"
+        />
+        <button id="search-clear-btn" onclick="clearSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- 核心场景过滤（免税店、奥莱、大促等）横向滚动胶囊 -->
+      <div>
+        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+          <i data-lucide="map-pin" class="w-3 h-3"></i> 目标比价场景
+        </div>
+        <div id="scene-pills" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs">
+          <!-- 由 JS 渲染 -->
+        </div>
+      </div>
+
+      <!-- 品类与状态筛选 -->
+      <div class="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100">
+        <div id="category-pills" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar text-xs">
+          <!-- 由 JS 渲染 -->
+        </div>
+        <div class="flex items-center gap-2 text-xs">
+          <select id="status-filter" onchange="renderCards()" class="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-slate-700 outline-none focus:border-slate-400">
+            <option value="all">全部状态</option>
+            <option value="watching" selected>观望中 (Watching)</option>
+            <option value="purchased">已入手 (Purchased)</option>
+            <option value="dropped">已拔草/放弃</option>
+          </select>
+          <select id="sort-filter" onchange="renderCards()" class="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-slate-700 outline-none focus:border-slate-400">
+            <option value="date-desc">最新添加</option>
+            <option value="price-asc">心理底价 从低到高</option>
+            <option value="price-desc">心理底价 从高到低</option>
+            <option value="gap-desc">预期折扣力度最高</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- 列表展示区域 -->
+    <div id="items-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <!-- 卡片动态生成 -->
+    </div>
+
+    <!-- 空状态插画 -->
+    <div id="empty-state" class="hidden text-center py-16 px-4">
+      <div class="w-16 h-16 rounded-2xl bg-slate-100 text-slate-400 mx-auto flex items-center justify-center mb-3">
+        <i data-lucide="package-search" class="w-8 h-8"></i>
+      </div>
+      <h3 class="font-bold text-slate-700 text-base">暂无匹配的待购好物</h3>
+      <p class="text-sm text-slate-400 mt-1 max-w-sm mx-auto">添加你的第一个心愿物品，或者清除筛选条件试试！</p>
+      <button onclick="resetFilters()" class="mt-4 px-4 py-2 text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium rounded-xl transition">
+        重置筛选
+      </button>
+    </div>
+  </main>
+
+  <div id="modal-item" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 hidden transition-opacity">
+    <div class="bg-white w-full max-w-xl max-h-[92vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      
+      <!-- 模态框 Header -->
+      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+        <h3 id="modal-item-title" class="font-bold text-slate-900 text-base flex items-center gap-2">
+          <i data-lucide="sparkles" class="w-4 h-4 text-amber-500"></i>
+          <span>记录想买好物</span>
+        </h3>
+        <button onclick="closeModal('modal-item')" class="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- 模态框 表单内容 -->
+      <form id="item-form" onsubmit="handleSaveItem(event)" class="overflow-y-auto p-5 sm:p-6 space-y-4 text-sm flex-1">
+        <input type="hidden" id="item-id" />
+
+        <!-- 基础信息 -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">物品名称 <span class="text-red-500">*</span></label>
+            <input type="text" id="item-title" required placeholder="如：索尼 24-70mm F2.8 GM II" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-slate-800 bg-white" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">品牌 / 厂商</label>
+            <input type="text" id="item-brand" placeholder="如：Sony / 始祖鸟 / 雅诗兰黛" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-slate-800 bg-white" />
+          </div>
+        </div>
+
+        <!-- 分类与比价主要场景 -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">所属分类</label>
+            <select id="item-category" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-slate-800 bg-white">
+              <option value="数码影音">数码影音</option>
+              <option value="服饰鞋包">服饰鞋包</option>
+              <option value="美妆香氛">美妆香氛</option>
+              <option value="户外运动">户外运动</option>
+              <option value="生活个护">生活个护</option>
+              <option value="潮玩杂货">潮玩杂货</option>
+              <option value="其他分类">其他分类</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">目标比价场景</label>
+            <select id="item-scene" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-slate-800 bg-white">
+              <option value="免税店 (Duty Free)">免税店 (Duty Free 机场/离岛)</option>
+              <option value="奥特莱斯折扣店">奥特莱斯折扣店 (Outlets)</option>
+              <option value="大促/双11/618">大促狂欢 (双11 / 618 / 黑五)</option>
+              <option value="海外旅行/本土购">海外旅行/本土购 (日本/欧洲等)</option>
+              <option value="海淘/代购/二手">海淘 / 代购 / 二手流通</option>
+              <option value="日常随时关注">日常随时关注</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 款式规格与尺码 (重点针对试穿/对比) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">款式 / 颜色 / 货号</label>
+            <input type="text" id="item-spec" placeholder="如：黑色磨砂款 / 01号象牙白" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-slate-800 bg-white" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">尺寸 / 尺码 / 规格</label>
+            <input type="text" id="item-size" placeholder="如：EU 42码 (内长265) / 100ml / 28寸" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-slate-800 bg-white" />
+          </div>
+        </div>
+
+        <!-- 价格锚定与心理预期 -->
+        <div class="bg-amber-50/60 p-3.5 rounded-2xl border border-amber-200/60 space-y-3">
+          <div class="flex items-center justify-between text-xs text-amber-900 font-semibold">
+            <span>价格设定与底价锚定 (统一折合人民币 CNY)</span>
+            <span class="text-[11px] font-normal text-amber-700">★ 理性消费核心依据</span>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs text-slate-600 mb-1">专柜参考原价 (¥)</label>
+              <input type="number" id="item-original-price" step="any" placeholder="专柜标价 1699" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-slate-800 bg-white" />
+            </div>
+            <div>
+              <label class="block text-xs text-slate-800 font-bold mb-1">心理入手底价 (¥) <span class="text-red-500">*</span></label>
+              <input type="number" id="item-target-price" step="any" required placeholder="如 ≤ 1199 才入" class="w-full px-3 py-2 border border-amber-300 rounded-xl focus:outline-none focus:ring-1 focus:ring-amber-500 bg-white font-semibold text-amber-900" />
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-500">提示：到免税店或奥莱时，现场售价低于此底价即为“神价可冲”！</p>
+        </div>
+
+        <!-- 图片处理 (支持上传本地文件/小红书淘宝截图，或填图片链接) -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">物品图片 (淘宝/小红书截图或外链)</label>
+          <div class="flex items-center gap-2 mb-2">
+            <input type="url" id="item-image-url" placeholder="可粘贴图片网址 (https://...)" class="flex-1 px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-slate-800 bg-white" onchange="previewExternalImage(this.value)" />
+            <label class="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2 rounded-xl font-medium border border-slate-200 flex items-center gap-1 shrink-0 transition">
+              <i data-lucide="upload" class="w-3.5 h-3.5"></i>
+              <span>传本地图</span>
+              <input type="file" id="item-file-input" accept="image/*" class="hidden" onchange="handleImageUpload(event)" />
+            </label>
+          </div>
+          <!-- 图片预览盒子 -->
+          <div id="image-preview-container" class="relative w-full h-32 rounded-xl bg-slate-50 border border-slate-200 overflow-hidden flex items-center justify-center">
+            <img id="image-preview" src="" alt="预览图" class="w-full h-full object-cover hidden" />
+            <div id="image-preview-placeholder" class="text-xs text-slate-400 flex flex-col items-center gap-1">
+              <i data-lucide="image" class="w-6 h-6 text-slate-300"></i>
+              <span>暂无图片 (建议上传截图，在免税店找店员对图更方便)</span>
+            </div>
+            <button type="button" id="remove-img-btn" onclick="clearImage()" class="hidden absolute top-2 right-2 p-1 bg-black/60 hover:bg-black/80 text-white rounded-full">
+              <i data-lucide="x" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- 外部链接 -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">种草/购买链接 (淘宝/小红书/京东/官网)</label>
+          <div class="relative">
+            <i data-lucide="external-link" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <input type="url" id="item-link" placeholder="https://..." class="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-slate-800 bg-white" />
+          </div>
+        </div>
+
+        <!-- 避坑与攻略备注 -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">比价要点与备忘备忘录</label>
+          <textarea id="item-notes" rows="2" placeholder="例：日上免税店买三件可再打85折；日本成田机场有专门配额；国内专柜试穿过42码略紧建议入42.5码..." class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-slate-800 bg-white"></textarea>
+        </div>
+
+        <!-- 状态选择 -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">心愿状态</label>
+          <div class="flex gap-2">
+            <label class="flex-1 flex items-center justify-center gap-1.5 p-2 rounded-xl border border-slate-200 text-xs font-medium cursor-pointer has-[:checked]:bg-blue-50 has-[:checked]:border-blue-300 has-[:checked]:text-blue-700">
+              <input type="radio" name="item-status" value="watching" class="hidden" checked />
+              <i data-lucide="binoculars" class="w-3.5 h-3.5"></i>
+              <span>观望中</span>
+            </label>
+            <label class="flex-1 flex items-center justify-center gap-1.5 p-2 rounded-xl border border-slate-200 text-xs font-medium cursor-pointer has-[:checked]:bg-emerald-50 has-[:checked]:border-emerald-300 has-[:checked]:text-emerald-700">
+              <input type="radio" name="item-status" value="purchased" class="hidden" />
+              <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
+              <span>已入手</span>
+            </label>
+            <label class="flex-1 flex items-center justify-center gap-1.5 p-2 rounded-xl border border-slate-200 text-xs font-medium cursor-pointer has-[:checked]:bg-slate-100 has-[:checked]:border-slate-300 has-[:checked]:text-slate-500">
+              <input type="radio" name="item-status" value="dropped" class="hidden" />
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+              <span>已拔草</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- 底部提交按钮 -->
+        <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+          <button type="button" onclick="closeModal('modal-item')" class="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-medium transition">取消</button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-sm transition">保存好物备忘</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="modal-compare" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 hidden transition-opacity">
+    <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      
+      <!-- 比较器 顶部头部 -->
+      <div class="px-6 py-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-bold">
+            <i data-lucide="calculator" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-base leading-tight">现场即时比价计算器</h3>
+            <p id="compare-target-title" class="text-xs text-slate-300 truncate max-w-[220px]">物品名称加载中...</p>
+          </div>
+        </div>
+        <button onclick="closeModal('modal-compare')" class="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-5 sm:p-6 space-y-4 text-sm overflow-y-auto max-h-[85vh]">
+        <input type="hidden" id="compare-item-id" />
+
+        <!-- 价格基准参考看板 -->
+        <div class="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-200/80">
+          <div>
+            <span class="text-[11px] text-slate-400 block">心理入手底价</span>
+            <span id="compare-target-price-display" class="font-bold text-amber-600 text-base">¥ 0</span>
+          </div>
+          <div>
+            <span class="text-[11px] text-slate-400 block">国内专柜原价</span>
+            <span id="compare-origin-price-display" class="font-bold text-slate-500 text-base">¥ 0</span>
+          </div>
+        </div>
+
+        <!-- 现场报价录入区 -->
+        <div class="space-y-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+          <div class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+            <i data-lucide="store" class="w-4 h-4 text-amber-500"></i>
+            <span>免税店 / 现场看到的价格</span>
+          </div>
+
+          <!-- 货币选择与汇率 -->
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <label class="block text-[11px] text-slate-500 mb-1">币种</label>
+              <select id="compare-currency" onchange="handleCurrencyChange()" class="w-full p-2 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-slate-800">
+                <option value="CNY" data-rate="1.0">¥ CNY (人民币)</option>
+                <option value="JPY" data-rate="0.048">¥ JPY (日元)</option>
+                <option value="USD" data-rate="7.25"> 美元 ($)</option>
+                <option value="EUR" data-rate="7.85"> 欧元 (€)</option>
+                <option value="KRW" data-rate="0.0053">₩ 韩元 (KRW)</option>
+                <option value="HKD" data-rate="0.93">HK$ 港币</option>
+                <option value="GBP" data-rate="9.20">£ 英镑</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-500 mb-1">参考汇率 (对CNY)</label>
+              <input type="number" id="compare-rate" step="0.0001" value="1.0" oninput="calculateDecision()" class="w-full p-2 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-500 mb-1">现场折扣 (如0.9折)</label>
+              <input type="number" id="compare-discount" step="0.01" value="1.0" placeholder="1.0代表原价" oninput="calculateDecision()" class="w-full p-2 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:outline-none" />
+            </div>
+          </div>
+
+          <!-- 现场标价输入 -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">现场标牌外币价格</label>
+              <div class="relative">
+                <span id="compare-currency-symbol" class="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400">¥</span>
+                <input type="number" id="compare-input-price" step="any" placeholder="输入现场金额" oninput="calculateDecision()" class="w-full pl-8 pr-3 py-2.5 text-base font-bold text-slate-900 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900" />
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">比价地点/渠道名</label>
+              <input type="text" id="compare-location-tag" placeholder="如：羽田机场免税店 / 三亚海旅" class="w-full px-3 py-2.5 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-slate-800" />
+            </div>
+          </div>
+        </div>
+
+        <!-- 智能决策研判仪表盘 (智能指示灯) -->
+        <div id="decision-panel" class="rounded-2xl p-4 border transition-all duration-300 bg-slate-50 border-slate-200">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold text-slate-500">折合人民币折算价</span>
+            <span id="calc-cny-price" class="text-2xl font-black text-slate-900">¥ --</span>
+          </div>
+
+          <!-- 决策状态条 -->
+          <div id="decision-badge" class="py-2.5 px-3.5 rounded-xl text-center text-xs font-bold flex items-center justify-center gap-2 bg-slate-200 text-slate-600">
+            <i data-lucide="help-circle" class="w-4 h-4"></i>
+            <span>请输入现场价格进行比对研判</span>
+          </div>
+
+          <!-- 详细差额对比 -->
+          <div id="decision-details" class="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-slate-200/60 text-xs hidden">
+            <div>
+              <span class="text-slate-400 block">相比专柜节省</span>
+              <span id="calc-saved-original" class="font-bold text-emerald-600">--</span>
+            </div>
+            <div>
+              <span class="text-slate-400 block">与心理底价差额</span>
+              <span id="calc-target-diff" class="font-bold">--</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 将这次比价记录沉淀到历史价格中 -->
+        <div class="space-y-2">
+          <button type="button" onclick="recordCurrentQuote()" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition">
+            <i data-lucide="bookmark-plus" class="w-4 h-4 text-amber-400"></i>
+            <span>保存此报价到该物品历史比价线</span>
+          </button>
+        </div>
+
+        <!-- 该好物历史报价足迹 -->
+        <div class="space-y-1.5">
+          <div class="text-[11px] font-semibold text-slate-400 flex items-center justify-between">
+            <span>历史比价足迹点</span>
+            <span id="quote-count" class="text-[10px]">0 条</span>
+          </div>
+          <div id="quote-history-list" class="space-y-1.5 max-h-36 overflow-y-auto pr-1 text-xs">
+            <!-- 历史记录节点 -->
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-data" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 hidden">
+    <div class="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+          <i data-lucide="hard-drive" class="w-4 h-4 text-slate-700"></i>
+          <span>本地数据备份与同步</span>
+        </h3>
+        <button onclick="closeModal('modal-data')" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <p class="text-xs text-slate-500 leading-relaxed">
+        所有想买心愿与比价记录均完全存储在您当前的浏览器本地中（LocalStorage），安全且隐私。您可以随时导出 JSON 文件在多台设备间转移。
+      </p>
+
+      <div class="space-y-2 pt-2">
+        <button onclick="exportDataJSON()" class="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs flex items-center justify-center gap-2 transition">
+          <i data-lucide="download" class="w-4 h-4 text-slate-600"></i>
+          <span>导出备份文件 (JSON)</span>
+        </button>
+
+        <label class="w-full py-2.5 px-4 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-800 font-semibold text-xs flex items-center justify-center gap-2 cursor-pointer transition">
+          <i data-lucide="upload" class="w-4 h-4 text-slate-600"></i>
+          <span>导入数据备份文件 (JSON)</span>
+          <input type="file" accept=".json" class="hidden" onchange="importDataJSON(event)" />
+        </label>
+
+        <button onclick="loadSamplePresetData()" class="w-full py-2.5 px-4 rounded-xl text-amber-700 bg-amber-50 hover:bg-amber-100 font-semibold text-xs flex items-center justify-center gap-2 transition">
+          <i data-lucide="refresh-cw" class="w-4 h-4 text-amber-600"></i>
+          <span>重新加载官方精选对比示例数据</span>
+        </button>
+      </div>
+
+      <div class="pt-2 text-center">
+        <button onclick="clearAllDataWithConfirm()" class="text-[11px] text-red-500 hover:text-red-700 underline">
+          清空所有数据（恢复全新状态）
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 常量定义
+    const STORAGE_KEY = 'smartbuy_wishlist_items_v1';
+    
+    // 场景选项胶囊
+    const SCENES = [
+      '全部场景',
+      '免税店 (Duty Free)',
+      '奥特莱斯折扣店',
+      '大促/双11/618',
+      '海外旅行/本土购',
+      '海淘/代购/二手'
+    ];
+
+    const CATEGORIES = [
+      '全部分类',
+      '数码影音',
+      '服饰鞋包',
+      '美妆香氛',
+      '户外运动',
+      '生活个护',
+      '潮玩杂货'
+    ];
+
+    // 内置示例数据（让初次打开即有充实体验）
+    const SAMPLE_ITEMS = [
+      {
+        id: 'sample-1',
+        title: '索尼 FE 24-70mm F2.8 GM II 全画幅变焦镜头',
+        brand: 'SONY (索尼)',
+        category: '数码影音',
+        scene: '海外旅行/本土购',
+        spec: '二代红G 黑色标准变焦',
+        size: '82mm 滤镜口径 / 695g',
+        originalPrice: 15999,
+        targetPrice: 12500,
+        currency: 'CNY',
+        notes: '去日本东京中野 Fujiya Camera 或者秋叶原 Sofmap 看看免税加银联95折能不能做到12000以内。低于12500直接刷卡。',
+        imageUrl: 'https://images.unsplash.com/photo-1617005082133-548c4dd27f35?w=600&auto=format&fit=crop&q=80',
+        link: 'https://www.sony.com.cn',
+        status: 'watching',
+        createdAt: '2026-03-10',
+        quotes: [
+          { date: '2026-03-15', location: '国内电商大促', priceOriginal: 13999, currency: 'CNY', priceCNY: 13999 },
+          { date: '2026-04-02', location: '日本成田免税', priceOriginal: 270000, currency: 'JPY', priceCNY: 12960 }
+        ]
+      },
+      {
+        id: 'sample-2',
+        title: '始祖鸟 Beta LT 防水冲锋衣',
+        brand: 'Arc\'teryx',
+        category: '户外运动',
+        scene: '奥特莱斯折扣店',
+        spec: 'GORE-TEX 黑色/黑曜石',
+        size: 'L 码 (内搭羽绒留空间)',
+        originalPrice: 4800,
+        targetPrice: 3200,
+        currency: 'CNY',
+        notes: '国内专柜常年缺货。关注海外奥特莱斯折扣或加拿大海淘，心理底价3200，超过3600坚决不接盘。',
+        imageUrl: 'https://images.unsplash.com/photo-1544441893-675973e31985?w=600&auto=format&fit=crop&q=80',
+        link: '',
+        status: 'watching',
+        createdAt: '2026-02-18',
+        quotes: [
+          { date: '2026-02-25', location: '国内专柜现货', priceOriginal: 4800, currency: 'CNY', priceCNY: 4800 }
+        ]
+      },
+      {
+        id: 'sample-3',
+        title: 'Le Labo Santal 33 檀木浓香水 100ml',
+        brand: 'Le Labo (勒莱柏)',
+        category: '美妆香氛',
+        scene: '免税店 (Duty Free)',
+        spec: 'Eau de Parfum',
+        size: '100 ml 喷雾装',
+        originalPrice: 2480,
+        targetPrice: 1550,
+        currency: 'CNY',
+        notes: '日上免税店或者韩国仁川机场新罗免税店偶尔有2件8折券，拼单到手通常1500左右是好价。买前注意批号保质期。',
+        imageUrl: 'https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?w=600&auto=format&fit=crop&q=80',
+        link: '',
+        status: 'watching',
+        createdAt: '2026-01-20',
+        quotes: [
+          { date: '2026-02-10', location: '上海日上免税行', priceOriginal: 1620, currency: 'CNY', priceCNY: 1620 }
+        ]
+      }
+    ];
+
+    // 全局状态
+    let items = [];
+    let activeScene = '全部场景';
+    let activeCategory = '全部分类';
+    let currentUploadedBase64 = '';
+
+    window.addEventListener('DOMContentLoaded', () => {
+      loadItems();
+      renderScenePills();
+      renderCategoryPills();
+      renderCards();
+      lucide.createIcons();
+    });
+
+    // 读取本地存储
+    function loadItems() {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          items = JSON.parse(stored);
+        } else {
+          items = SAMPLE_ITEMS;
+          saveItems();
+        }
+      } catch (err) {
+        console.error('加载本地数据出错:', err);
+        items = SAMPLE_ITEMS;
+      }
+      updateStats();
+    }
+
+    // 保存至本地存储
+    function saveItems() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      updateStats();
+    }
+
+    // 统计面板更新
+    function updateStats() {
+      const watching = items.filter(i => i.status === 'watching');
+      const purchased = items.filter(i => i.status === 'purchased');
+      const totalTarget = watching.reduce((sum, item) => sum + (Number(item.targetPrice) || 0), 0);
+
+      document.getElementById('stat-watching').textContent = watching.length;
+      document.getElementById('stat-purchased').textContent = purchased.length;
+      document.getElementById('stat-total-budget').textContent = '¥' + Math.round(totalTarget).toLocaleString();
+    }
+
+    function renderScenePills() {
+      const container = document.getElementById('scene-pills');
+      container.innerHTML = SCENES.map(scene => {
+        const isActive = activeScene === scene;
+        return `
+          <button 
+            onclick="selectScene('${scene}')"
+            class="px-3 py-1.5 rounded-xl font-medium shrink-0 transition ${
+              isActive 
+                ? 'bg-slate-900 text-white shadow-xs' 
+                : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+            }"
+          >
+            ${scene}
+          </button>
+        `;
+      }).join('');
+    }
+
+    function selectScene(scene) {
+      activeScene = scene;
+      renderScenePills();
+      renderCards();
+    }
+
+    function renderCategoryPills() {
+      const container = document.getElementById('category-pills');
+      container.innerHTML = CATEGORIES.map(cat => {
+        const isActive = activeCategory === cat;
+        return `
+          <button 
+            onclick="selectCategory('${cat}')"
+            class="px-2.5 py-1 rounded-lg font-medium shrink-0 transition ${
+              isActive 
+                ? 'bg-amber-100 text-amber-900 font-semibold' 
+                : 'text-slate-500 hover:text-slate-900'
+            }"
+          >
+            ${cat}
+          </button>
+        `;
+      }).join('');
+    }
+
+    function selectCategory(cat) {
+      activeCategory = cat;
+      renderCategoryPills();
+      renderCards();
+    }
+
+    function clearSearch() {
+      const input = document.getElementById('search-input');
+      input.value = '';
+      document.getElementById('search-clear-btn').classList.add('hidden');
+      renderCards();
+    }
+
+    function resetFilters() {
+      activeScene = '全部场景';
+      activeCategory = '全部分类';
+      document.getElementById('search-input').value = '';
+      document.getElementById('status-filter').value = 'all';
+      renderScenePills();
+      renderCategoryPills();
+      renderCards();
+    }
+
+    function renderCards() {
+      const container = document.getElementById('items-grid');
+      const emptyState = document.getElementById('empty-state');
+      const searchVal = (document.getElementById('search-input').value || '').trim().toLowerCase();
+      const statusFilter = document.getElementById('status-filter').value;
+      const sortFilter = document.getElementById('sort-filter').value;
+
+      // 清除按钮可见性
+      const clearBtn = document.getElementById('search-clear-btn');
+      if (searchVal) {
+        clearBtn.classList.remove('hidden');
+      } else {
+        clearBtn.classList.add('hidden');
+      }
+
+      // 过滤计算
+      let filtered = items.filter(item => {
+        // 场景筛选
+        if (activeScene !== '全部场景' && item.scene !== activeScene) return false;
+        // 分类筛选
+        if (activeCategory !== '全部分类' && item.category !== activeCategory) return false;
+        // 状态筛选
+        if (statusFilter !== 'all' && item.status !== statusFilter) return false;
+        // 搜索关键字
+        if (searchVal) {
+          const textMatch = 
+            (item.title && item.title.toLowerCase().includes(searchVal)) ||
+            (item.brand && item.brand.toLowerCase().includes(searchVal)) ||
+            (item.spec && item.spec.toLowerCase().includes(searchVal)) ||
+            (item.size && item.size.toLowerCase().includes(searchVal)) ||
+            (item.notes && item.notes.toLowerCase().includes(searchVal)) ||
+            (item.scene && item.scene.toLowerCase().includes(searchVal));
+          if (!textMatch) return false;
+        }
+        return true;
+      });
+
+      // 排序
+      filtered.sort((a, b) => {
+        if (sortFilter === 'date-desc') {
+          return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+        } else if (sortFilter === 'price-asc') {
+          return (a.targetPrice || 0) - (b.targetPrice || 0);
+        } else if (sortFilter === 'price-desc') {
+          return (b.targetPrice || 0) - (a.targetPrice || 0);
+        } else if (sortFilter === 'gap-desc') {
+          const discountA = a.originalPrice ? ((a.originalPrice - a.targetPrice) / a.originalPrice) : 0;
+          const discountB = b.originalPrice ? ((b.originalPrice - b.targetPrice) / b.originalPrice) : 0;
+          return discountB - discountA;
+        }
+        return 0;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        lucide.createIcons();
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+
+      container.innerHTML = filtered.map(item => {
+        // 状态徽标
+        let statusBadge = '';
+        if (item.status === 'purchased') {
+          statusBadge = '<span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800">已入手</span>';
+        } else if (item.status === 'dropped') {
+          statusBadge = '<span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-500">已拔草</span>';
+        } else {
+          statusBadge = '<span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700">观望中</span>';
+        }
+
+        // 计算目标折扣比率
+        let discountTag = '';
+        if (item.originalPrice && item.targetPrice && item.originalPrice > item.targetPrice) {
+          const rate = Math.round((item.targetPrice / item.originalPrice) * 10);
+          const saveVal = item.originalPrice - item.targetPrice;
+          discountTag = `<span class="text-[11px] text-amber-700 font-semibold bg-amber-50 border border-amber-200/60 px-1.5 py-0.5 rounded-md">底价约${rate}折 (省¥${Math.round(saveVal)})</span>`;
+        }
+
+        const latestQuote = item.quotes && item.quotes.length > 0 ? item.quotes[item.quotes.length - 1] : null;
+
+        // 安全防注入处理
+        const safeTitle = escapeHtml(item.title);
+        const safeBrand = escapeHtml(item.brand || '精选品牌');
+        const safeSpec = escapeHtml(item.spec || '');
+        const safeSize = escapeHtml(item.size || '');
+        const safeNotes = escapeHtml(item.notes || '');
+
+        return `
+          <div class="bg-white rounded-3xl border border-slate-200/80 hover:border-slate-300 shadow-xs hover:shadow-md transition-all flex flex-col justify-between overflow-hidden group">
+            
+            <!-- 上半部：图片与基础标签 -->
+            <div>
+              <div class="relative w-full h-44 bg-slate-100 overflow-hidden">
+                ${
+                  item.imageUrl 
+                    ? `<img src="${item.imageUrl}" alt="${safeTitle}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" onerror="this.src='https://placehold.co/600x400/f1f5f9/94a3b8?text=暂无图片'" />`
+                    : `<div class="w-full h-full flex flex-col items-center justify-center text-slate-400 bg-slate-100">
+                        <i data-lucide="package" class="w-10 h-10 stroke-1 mb-1"></i>
+                        <span class="text-xs">等待补充商品图片</span>
+                       </div>`
+                }
+                <!-- 场景浮标 -->
+                <div class="absolute top-3 left-3 flex flex-wrap gap-1.5">
+                  <span class="px-2.5 py-1 rounded-xl text-xs font-semibold bg-slate-900/80 backdrop-blur-md text-white shadow-xs">
+                    ${escapeHtml(item.scene || '免税店')}
+                  </span>
+                </div>
+
+                <!-- 状态浮标 -->
+                <div class="absolute top-3 right-3">
+                  ${statusBadge}
+                </div>
+              </div>
+
+              <!-- 卡片主体文字 -->
+              <div class="p-4 sm:p-5">
+                <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
+                  <span class="font-medium text-slate-500">${safeBrand}</span>
+                  <span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md text-[11px]">${escapeHtml(item.category)}</span>
+                </div>
+
+                <h3 class="font-bold text-slate-900 text-base leading-snug line-clamp-2 hover:text-amber-700 transition" title="${safeTitle}">
+                  ${safeTitle}
+                </h3>
+
+                <!-- 款式与尺码规格 (针对免税店/奥莱试穿的核心比对信息) -->
+                ${(safeSpec || safeSize) ? `
+                  <div class="mt-2.5 flex flex-wrap items-center gap-1.5 text-xs text-slate-600 bg-slate-50 p-2 rounded-xl border border-slate-100">
+                    ${safeSize ? `<span class="bg-white px-2 py-0.5 rounded-lg border border-slate-200/80 font-medium text-slate-800 flex items-center gap-1"><i data-lucide="ruler" class="w-3 h-3 text-amber-600"></i> ${safeSize}</span>` : ''}
+                    ${safeSpec ? `<span class="bg-white px-2 py-0.5 rounded-lg border border-slate-200/80 font-medium text-slate-700 truncate max-w-[170px]" title="${safeSpec}"><i data-lucide="palette" class="w-3 h-3 text-blue-500 inline mr-0.5"></i> ${safeSpec}</span>` : ''}
+                  </div>
+                ` : ''}
+
+                <!-- 价格看板 -->
+                <div class="mt-3.5 pt-3 border-t border-slate-100 flex items-end justify-between">
+                  <div>
+                    <span class="text-[11px] text-slate-400 block font-medium">心理入手底价</span>
+                    <div class="flex items-baseline gap-1">
+                      <span class="text-xl font-black text-amber-600 tracking-tight">¥${Number(item.targetPrice || 0).toLocaleString()}</span>
+                      ${item.originalPrice ? `<span class="text-xs text-slate-400 line-through">¥${Number(item.originalPrice).toLocaleString()}</span>` : ''}
+                    </div>
+                  </div>
+                  <div>
+                    ${discountTag}
+                  </div>
+                </div>
+
+                <!-- 避坑与攻略备注 -->
+                ${safeNotes ? `
+                  <div class="mt-3 text-xs text-slate-600 bg-amber-50/50 p-2.5 rounded-xl border border-amber-100/60 leading-relaxed flex items-start gap-1.5">
+                    <i data-lucide="sticky-note" class="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5"></i>
+                    <p class="line-clamp-2" title="${safeNotes}">${safeNotes}</p>
+                  </div>
+                ` : ''}
+
+                <!-- 最新比价记录提示 -->
+                ${latestQuote ? `
+                  <div class="mt-2 text-[11px] text-slate-400 flex items-center justify-between">
+                    <span>最新见价：${escapeHtml(latestQuote.location)}</span>
+                    <span class="font-bold text-slate-700">¥${latestQuote.priceCNY}</span>
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+
+            <!-- 下半部：操作按钮栏 (手机端方便大拇指点按) -->
+            <div class="px-4 pb-4 sm:px-5 sm:pb-5 pt-1 flex items-center gap-2 border-t border-slate-100/80 mt-2">
+              <button 
+                onclick="openCompareModal('${item.id}')"
+                class="flex-1 py-2.5 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-98 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition"
+              >
+                <i data-lucide="calculator" class="w-4 h-4"></i>
+                <span>现场比价决策</span>
+              </button>
+
+              ${item.link ? `
+                <a href="${item.link}" target="_blank" rel="noopener noreferrer" class="p-2.5 rounded-xl border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition" title="跳转原始商品页">
+                  <i data-lucide="external-link" class="w-4 h-4"></i>
+                </a>
+              ` : ''}
+
+              <button 
+                onclick="editItem('${item.id}')"
+                class="p-2.5 rounded-xl border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition"
+                title="编辑详情"
+              >
+                <i data-lucide="edit-3" class="w-4 h-4"></i>
+              </button>
+
+              <button 
+                onclick="deleteItem('${item.id}')"
+                class="p-2.5 rounded-xl border border-slate-200 text-red-400 hover:text-red-600 hover:bg-red-50 transition"
+                title="删除"
+              >
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </div>
+
+          </div>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    function openNewItemModal() {
+      document.getElementById('item-form').reset();
+      document.getElementById('item-id').value = '';
+      document.getElementById('modal-item-title').innerHTML = `
+        <i data-lucide="sparkles" class="w-4 h-4 text-amber-500"></i>
+        <span>记录想买好物 (慢买清单)</span>
+      `;
+      clearImage();
+      document.querySelector('input[name="item-status"][value="watching"]').checked = true;
+      openModal('modal-item');
+      lucide.createIcons();
+    }
+
+    function editItem(id) {
+      const item = items.find(i => i.id === id);
+      if (!item) return;
+
+      document.getElementById('item-id').value = item.id;
+      document.getElementById('item-title').value = item.title || '';
+      document.getElementById('item-brand').value = item.brand || '';
+      document.getElementById('item-category').value = item.category || '数码影音';
+      document.getElementById('item-scene').value = item.scene || '免税店 (Duty Free)';
+      document.getElementById('item-spec').value = item.spec || '';
+      document.getElementById('item-size').value = item.size || '';
+      document.getElementById('item-original-price').value = item.originalPrice || '';
+      document.getElementById('item-target-price').value = item.targetPrice || '';
+      document.getElementById('item-image-url').value = item.imageUrl || '';
+      document.getElementById('item-link').value = item.link || '';
+      document.getElementById('item-notes').value = item.notes || '';
+
+      const statusRadio = document.querySelector(`input[name="item-status"][value="${item.status || 'watching'}"]`);
+      if (statusRadio) statusRadio.checked = true;
+
+      // 预览已有图片
+      if (item.imageUrl) {
+        setPreviewImage(item.imageUrl);
+      } else {
+        clearImage();
+      }
+
+      document.getElementById('modal-item-title').innerHTML = `
+        <i data-lucide="edit" class="w-4 h-4 text-blue-500"></i>
+        <span>编辑好物备忘</span>
+      `;
+      openModal('modal-item');
+      lucide.createIcons();
+    }
+
+    function handleSaveItem(e) {
+      e.preventDefault();
+      const id = document.getElementById('item-id').value;
+      const title = document.getElementById('item-title').value.trim();
+      const brand = document.getElementById('item-brand').value.trim();
+      const category = document.getElementById('item-category').value;
+      const scene = document.getElementById('item-scene').value;
+      const spec = document.getElementById('item-spec').value.trim();
+      const size = document.getElementById('item-size').value.trim();
+      const originalPrice = parseFloat(document.getElementById('item-original-price').value) || 0;
+      const targetPrice = parseFloat(document.getElementById('item-target-price').value) || 0;
+      const externalImg = document.getElementById('item-image-url').value.trim();
+      const link = document.getElementById('item-link').value.trim();
+      const notes = document.getElementById('item-notes').value.trim();
+      const status = document.querySelector('input[name="item-status"]:checked').value;
+
+      // 确定最终图片：若上传了本地Base64则使用，否则使用外链
+      const finalImage = currentUploadedBase64 || externalImg || '';
+
+      if (id) {
+        // 更新现有项目
+        const index = items.findIndex(i => i.id === id);
+        if (index !== -1) {
+          items[index] = {
+            ...items[index],
+            title,
+            brand,
+            category,
+            scene,
+            spec,
+            size,
+            originalPrice,
+            targetPrice,
+            imageUrl: finalImage,
+            link,
+            notes,
+            status
+          };
+        }
+      } else {
+        // 创建新项目
+        const newItem = {
+          id: 'item_' + Date.now(),
+          title,
+          brand,
+          category,
+          scene,
+          spec,
+          size,
+          originalPrice,
+          targetPrice,
+          imageUrl: finalImage,
+          link,
+          notes,
+          status,
+          createdAt: new Date().toISOString().split('T')[0],
+          quotes: []
+        };
+        items.unshift(newItem);
+      }
+
+      saveItems();
+      closeModal('modal-item');
+      renderCards();
+    }
+
+    function deleteItem(id) {
+      const target = items.find(i => i.id === id);
+      const name = target ? target.title : '该物品';
+      if (confirm(`确定要从慢买清单中移除「${name}」吗？`)) {
+        items = items.filter(i => i.id !== id);
+        saveItems();
+        renderCards();
+      }
+    }
+
+    function handleImageUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      // 图片大小简单限制 4MB
+      if (file.size > 4 * 1024 * 1024) {
+        alert('为了保证本地存储顺畅，建议图片大小控制在 4MB 以内');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        currentUploadedBase64 = event.target.result;
+        setPreviewImage(currentUploadedBase64);
+        document.getElementById('item-image-url').value = '';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function previewExternalImage(url) {
+      if (url && url.startsWith('http')) {
+        currentUploadedBase64 = '';
+        setPreviewImage(url);
+      }
+    }
+
+    function setPreviewImage(src) {
+      const img = document.getElementById('image-preview');
+      const placeholder = document.getElementById('image-preview-placeholder');
+      const removeBtn = document.getElementById('remove-img-btn');
+
+      img.src = src;
+      img.classList.remove('hidden');
+      placeholder.classList.add('hidden');
+      removeBtn.classList.remove('hidden');
+    }
+
+    function clearImage() {
+      currentUploadedBase64 = '';
+      document.getElementById('item-image-url').value = '';
+      document.getElementById('item-file-input').value = '';
+      const img = document.getElementById('image-preview');
+      img.src = '';
+      img.classList.add('hidden');
+      document.getElementById('image-preview-placeholder').classList.remove('hidden');
+      document.getElementById('remove-img-btn').classList.add('hidden');
+    }
+
+    let currentCompareItem = null;
+
+    function openCompareModal(itemId) {
+      const item = items.find(i => i.id === itemId);
+      if (!item) return;
+
+      currentCompareItem = item;
+      document.getElementById('compare-item-id').value = item.id;
+      document.getElementById('compare-target-title').textContent = item.title;
+      document.getElementById('compare-target-price-display').textContent = `¥ ${Number(item.targetPrice || 0).toLocaleString()}`;
+      document.getElementById('compare-origin-price-display').textContent = item.originalPrice ? `¥ ${Number(item.originalPrice).toLocaleString()}` : '未填原价';
+
+      // 默认重置输入
+      document.getElementById('compare-input-price').value = '';
+      document.getElementById('compare-discount').value = '1.0';
+      document.getElementById('compare-location-tag').value = item.scene && item.scene.includes('免税') ? '日上/机场免税店' : '';
+
+      handleCurrencyChange();
+      renderQuoteHistory(item);
+      calculateDecision();
+
+      openModal('modal-compare');
+      lucide.createIcons();
+    }
+
+    function handleCurrencyChange() {
+      const sel = document.getElementById('compare-currency');
+      const opt = sel.options[sel.selectedIndex];
+      const rate = opt.getAttribute('data-rate');
+      document.getElementById('compare-rate').value = rate;
+
+      // 更改前缀符号
+      const symbolMap = { CNY: '¥', JPY: '¥', USD: '$', EUR: '€', KRW: '₩', HKD: 'HK$', GBP: '£' };
+      document.getElementById('compare-currency-symbol').textContent = symbolMap[sel.value] || '¥';
+
+      calculateDecision();
+    }
+
+    function calculateDecision() {
+      if (!currentCompareItem) return;
+
+      const inputPrice = parseFloat(document.getElementById('compare-input-price').value);
+      const rate = parseFloat(document.getElementById('compare-rate').value) || 1.0;
+      const discount = parseFloat(document.getElementById('compare-discount').value) || 1.0;
+
+      const calcCnyElem = document.getElementById('calc-cny-price');
+      const badgeElem = document.getElementById('decision-badge');
+      const detailsElem = document.getElementById('decision-details');
+      const panelElem = document.getElementById('decision-panel');
+      const savedOrigElem = document.getElementById('calc-saved-original');
+      const targetDiffElem = document.getElementById('calc-target-diff');
+
+      if (!inputPrice || isNaN(inputPrice) || inputPrice <= 0) {
+        calcCnyElem.textContent = '¥ --';
+        badgeElem.className = 'py-2.5 px-3.5 rounded-xl text-center text-xs font-bold flex items-center justify-center gap-2 bg-slate-200 text-slate-600';
+        badgeElem.innerHTML = `<i data-lucide="help-circle" class="w-4 h-4"></i><span>请输入现场价格进行比对研判</span>`;
+        detailsElem.classList.add('hidden');
+        panelElem.className = 'rounded-2xl p-4 border transition-all duration-300 bg-slate-50 border-slate-200';
+        lucide.createIcons();
+        return;
+      }
+
+      // 计算最终换算的人民币价格
+      const finalPriceCNY = Math.round(inputPrice * rate * discount);
+      calcCnyElem.textContent = `¥ ${finalPriceCNY.toLocaleString()}`;
+
+      const targetPrice = currentCompareItem.targetPrice || 0;
+      const originPrice = currentCompareItem.originalPrice || 0;
+
+      const diffWithTarget = finalPriceCNY - targetPrice; // 负数代表低于心理底价
+      const savedFromOrigin = originPrice ? (originPrice - finalPriceCNY) : 0;
+
+      detailsElem.classList.remove('hidden');
+
+      // 原价节省显示
+      if (originPrice > 0) {
+        const percentSaved = Math.round((savedFromOrigin / originPrice) * 100);
+        savedOrigElem.textContent = savedFromOrigin > 0 ? `省 ¥${savedFromOrigin.toLocaleString()} (${percentSaved}%)` : `贵了 ¥${Math.abs(savedFromOrigin).toLocaleString()}`;
+        savedOrigElem.className = savedFromOrigin > 0 ? 'font-bold text-emerald-600' : 'font-bold text-red-500';
+      } else {
+        savedOrigElem.textContent = '未设定专柜原价';
+        savedOrigElem.className = 'font-bold text-slate-400';
+      }
+
+      // 研判指示灯逻辑
+      // 1. 低于等于底价 -> 绿色【神价必冲】
+      // 2. 略高于底价（5%以内） -> 黄色【合理好价】
+      // 3. 高于底价 -> 红色【价格偏高，继续慢买】
+      if (diffWithTarget <= 0) {
+        // 低于或等于心理底价
+        const diffPercent = targetPrice > 0 ? Math.round((Math.abs(diffWithTarget) / targetPrice) * 100) : 0;
+        badgeElem.className = 'py-2.5 px-3.5 rounded-xl text-center text-xs font-bold flex items-center justify-center gap-2 bg-emerald-500 text-white shadow-sm pulse-glow';
+        badgeElem.innerHTML = `<i data-lucide="check-check" class="w-4 h-4"></i><span>🟢【神价必冲】低于你的底价 ${Math.abs(diffWithTarget)} 元！直接买！</span>`;
+        panelElem.className = 'rounded-2xl p-4 border transition-all duration-300 bg-emerald-50/70 border-emerald-300';
+        targetDiffElem.textContent = `低于底价 ¥${Math.abs(diffWithTarget)}`;
+        targetDiffElem.className = 'font-bold text-emerald-600';
+      } else if (diffWithTarget <= targetPrice * 0.06) {
+        // 接近心理底价（6%以内差价）
+        badgeElem.className = 'py-2.5 px-3.5 rounded-xl text-center text-xs font-bold flex items-center justify-center gap-2 bg-amber-500 text-white shadow-sm';
+        badgeElem.innerHTML = `<i data-lucide="alert-circle" class="w-4 h-4"></i><span>🟡【合理好价】逼近底价(仅差¥${diffWithTarget})，刚需可果断入手</span>`;
+        panelElem.className = 'rounded-2xl p-4 border transition-all duration-300 bg-amber-50/70 border-amber-300';
+        targetDiffElem.textContent = `高于底价 ¥${diffWithTarget}`;
+        targetDiffElem.className = 'font-bold text-amber-600';
+      } else {
+        // 偏高
+        badgeElem.className = 'py-2.5 px-3.5 rounded-xl text-center text-xs font-bold flex items-center justify-center gap-2 bg-red-100 text-red-700 border border-red-200';
+        badgeElem.innerHTML = `<i data-lucide="x-circle" class="w-4 h-4"></i><span>🔴【价格偏高】比心理底价贵 ¥${diffWithTarget}，保持克制，继续观望</span>`;
+        panelElem.className = 'rounded-2xl p-4 border transition-all duration-300 bg-red-50/50 border-red-200';
+        targetDiffElem.textContent = `超支 ¥${diffWithTarget}`;
+        targetDiffElem.className = 'font-bold text-red-600';
+      }
+
+      lucide.createIcons();
+    }
+
+    // 沉淀当前报价
+    function recordCurrentQuote() {
+      if (!currentCompareItem) return;
+
+      const inputPrice = parseFloat(document.getElementById('compare-input-price').value);
+      const rate = parseFloat(document.getElementById('compare-rate').value) || 1.0;
+      const discount = parseFloat(document.getElementById('compare-discount').value) || 1.0;
+      const currency = document.getElementById('compare-currency').value;
+      const location = document.getElementById('compare-location-tag').value.trim() || '现场实探';
+
+      if (!inputPrice || isNaN(inputPrice)) {
+        alert('请先输入当前现场的价格！');
+        return;
+      }
+
+      const finalPriceCNY = Math.round(inputPrice * rate * discount);
+
+      if (!currentCompareItem.quotes) {
+        currentCompareItem.quotes = [];
+      }
+
+      const today = new Date().toISOString().split('T')[0];
+      currentCompareItem.quotes.push({
+        date: today,
+        location,
+        currency,
+        priceOriginal: inputPrice,
+        priceCNY: finalPriceCNY
+      });
+
+      // 保存全局数据
+      const idx = items.findIndex(i => i.id === currentCompareItem.id);
+      if (idx !== -1) {
+        items[idx] = currentCompareItem;
+        saveItems();
+      }
+
+      renderQuoteHistory(currentCompareItem);
+      renderCards();
+    }
+
+    function renderQuoteHistory(item) {
+      const container = document.getElementById('quote-history-list');
+      const countElem = document.getElementById('quote-count');
+      const quotes = item.quotes || [];
+
+      countElem.textContent = `${quotes.length} 次记录`;
+
+      if (quotes.length === 0) {
+        container.innerHTML = `
+          <div class="text-slate-400 py-3 text-center bg-slate-50 rounded-xl text-xs">
+            暂无比价足迹，在现场比价时随时保存吧！
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = [...quotes].reverse().map((q, idx) => {
+        const isBetter = q.priceCNY <= (item.targetPrice || 0);
+        return `
+          <div class="flex items-center justify-between p-2 rounded-xl border border-slate-100 bg-slate-50/70 text-xs">
+            <div class="flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full ${isBetter ? 'bg-emerald-500' : 'bg-slate-400'}"></span>
+              <span class="font-medium text-slate-800">${escapeHtml(q.location)}</span>
+              <span class="text-[10px] text-slate-400">(${q.date})</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-[11px] text-slate-400">${q.priceOriginal} ${q.currency}</span>
+              <span class="font-bold ${isBetter ? 'text-emerald-600' : 'text-slate-900'}">≈ ¥${q.priceCNY}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openDataModal() {
+      openModal('modal-data');
+    }
+
+    function exportDataJSON() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(items, null, 2));
+      const downloadAnchor = document.createElement('a');
+      const date = new Date().toISOString().split('T')[0];
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `SmartBuy_Wishlist_Backup_${date}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    function importDataJSON(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        try {
+          const parsed = JSON.parse(event.target.result);
+          if (Array.isArray(parsed)) {
+            items = parsed;
+            saveItems();
+            renderCards();
+            closeModal('modal-data');
+            alert('数据导入成功！');
+          } else {
+            alert('导入的文件格式有误，需为标准的 SmartBuy 导出的数组格式。');
+          }
+        } catch (err) {
+          alert('解析 JSON 失败：' + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function loadSamplePresetData() {
+      if (confirm('确定要恢复官方精选示例清单吗？当前已有记录将被覆盖。')) {
+        items = JSON.parse(JSON.stringify(SAMPLE_ITEMS));
+        saveItems();
+        renderCards();
+        closeModal('modal-data');
+      }
+    }
+
+    function clearAllDataWithConfirm() {
+      if (confirm('警告：此操作将清空你的全部心愿比价清单且不可撤销，确定要清空吗？')) {
+        items = [];
+        saveItems();
+        renderCards();
+        closeModal('modal-data');
+      }
+    }
+
+    // 模态框通用控制
+    function openModal(id) {
+      document.getElementById(id).classList.remove('hidden');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.add('hidden');
+    }
+
+    // HTML转义工具以防XSS
+    function escapeHtml(text) {
+      if (!text) return '';
+      return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+  </script>
+</body>
+</html>
